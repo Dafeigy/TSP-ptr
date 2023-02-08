@@ -36,6 +36,51 @@ $$
 
 ## 策略梯度优化
 
+在开始之前先要说说策略梯度是什么。它其实是MDP过程下的一个衍生的概念，给定一条状态-动作的交互轨迹$\tau=\{s_1,a_1,s_2,a_2,\dots\}$，参数为$\theta$的一个策略实体能复现这条轨迹的概率为：
+$$
+\begin{aligned}
+p_\theta(\tau)=&p(s_1)p(a_1|s_1)p(s_2|s_1,a_1)p(a_2|s_2)\dots\\
+=&p(s_1)\prod_{t=1}^{T}p_{\theta}(a_t|s_t)p(s_{t+1}|s_t,a_t)
+\end{aligned}
+$$
+注意，策略只能控制通过观察状态选择动作这个过程，只有环境才能控制根据动作的选择作出响应。在每一次的交互过程中都会产生一个奖励（reward）$r_i$，这条轨迹上所有的reward加起来就是回报$R(\tau)$：
+$$
+R(\tau)=\sum_{\tau}r_i
+$$
+而回报的期望就是：
+$$
+\overline R_\theta(\tau)=\sum_{\tau}p_\theta(\tau)R(\tau)=\mathbb E_{\tau\sim p_\theta(\tau)}[R(\tau)]
+$$
+一般的MDP建模的主要目标之一就是最大化回报期望，因此一个可行的方法就是使用梯度上升法优化参数$\theta$使回报期望变大，而使用梯度上升的前提条件就是要计算优化式子的梯度：
+$$
+\nabla_\theta [\overline R_\theta(\tau)]=\nabla_\theta[\sum_{\tau}R(\tau)p_\theta(\tau)]
+$$
+注意到$R(\tau)$是和$\theta$无关的，因此可以改写成：
+$$
+\nabla_\theta [\overline R_\theta(\tau)]=\sum_{\tau}R(\tau)\nabla_\theta p_\theta(\tau)]
+$$
+注意上式中的$\nabla_\theta p_\theta(\tau)$满足如下式子：
+$$
+\begin{aligned}
+\nabla_\theta p_\theta(\tau)&=\nabla_\theta [e^{\log p_\theta(\tau)}]\\
+&=e^{\log p_\theta(\tau)}\nabla_\theta[\log p_\theta(\tau)]\\
+&=p_\theta(\tau)\cdot\nabla_\theta[\log p_\theta(\tau)]
+\end{aligned}
+$$
+所以回报期望的梯度可以表示为：
+$$
+\nabla_\theta[\overline R_\theta(\tau)]=\sum_\tau R(\tau)\nabla_\theta\log p_\theta(\tau)
+$$
+但实际上$\mathbb E_{\tau\sim p_\theta(\tau)}[R(\tau)]$是无法计算的，但可以从统计学的角度进行估计，具体做法就是采样$N$个$\tau$然后计算上式的值，把每一个值加起来求平均即可得到梯度的一个估计：
+$$
+
+\begin{aligned}\mathbb E_{\tau\sim p_\theta(\tau)}[R(\tau)\nabla_\theta\log p_\theta(\tau)]&\approx\frac{1}{N}\sum_{n=1}^{N}R(\tau_n)
+\nabla_\theta\log p_\theta(\tau_n)\\
+&=\frac{1}{N}\sum_{n=1}^{N}\sum_{t=1}^{T}R(\tau_n)\nabla_\theta \log p_\theta(a_t^n|s_t^n)
+\end{aligned}
+$$
+
+
 作者认为RL算法对组合优化问题有天然优势，因为这类问题的奖励机制很简单并且在实际部署时也可以用。网络用$\theta$表征，其优化的目标是希望给定输入图$s$后输出的旅程距离：
 $$
 J(\bold{\theta}|s)=\mathbb E_{\pi\sim p_{\theta}(\cdot|s)}L(\pi|s)
