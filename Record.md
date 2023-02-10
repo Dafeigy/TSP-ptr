@@ -73,7 +73,6 @@ $$
 $$
 但实际上$\mathbb E_{\tau\sim p_\theta(\tau)}[R(\tau)]$是无法计算的，但可以从统计学的角度进行估计，具体做法就是采样$N$个$\tau$然后计算上式的值，把每一个值加起来求平均即可得到梯度的一个估计：
 $$
-
 \begin{aligned}\mathbb E_{\tau\sim p_\theta(\tau)}[R(\tau)\nabla_\theta\log p_\theta(\tau)]&\approx\frac{1}{N}\sum_{n=1}^{N}R(\tau_n)
 \nabla_\theta\log p_\theta(\tau_n)\\
 &=\frac{1}{N}\sum_{n=1}^{N}\sum_{t=1}^{T}R(\tau_n)\nabla_\theta \log p_\theta(a_t^n|s_t^n)
@@ -138,3 +137,4 @@ Critic网络映射输入序列$s$到一个基线函数$b_{\theta_v}$由如下几
 
 ### 指针机制
 
+有空补充
