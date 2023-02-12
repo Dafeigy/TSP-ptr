@@ -30,7 +30,7 @@ $$
 
 <img src="https://s2.loli.net/2023/02/08/ImzgWKM3Sl29xLn.png" alt="image-20230208211936761" style="zoom:50%;" />
 
-整体的网络包含两个RNN模块——编码器和解码器，他们都由LSTM单元组成。编码器模块读取输入序列$s$，每次读取一个元素然后将其转换为潜在记忆状态（latent memory states）$\{enc_i\}_{i=1}^{n}$，其中$enc_i\in \mathbb R^d$。在$i$时刻输入到编码器模块的输入是一个点$x_i$二维坐标$d$维的embedding，embedding是对所有输入点$x_i$共享参数的一个线性转换。解码器模块同样保存其潜在记忆状态$\{dec_i\}_{i=1}^{n}$，其中$dec_i\in \mathbb R^d$且在每一个时间步$i$使用指针机制产生下一个需要到访的城市概率分布。当下一个到访城市被选定后，它将会被传入到解码器作为其下一个输入。解码器的初始输入是一个$d$维的可训练的向量，在图中以$<g>$表示。
+整体的网络包含两个RNN模块——编码器和解码器，他们都由LSTM单元组成。编码器模块读取输入序列$s$，每次读取一个元素然后将其转换为潜在记忆状态（latent memory states）$\{enc_i\}_{i=1}^{n}$，其中$enc_i\in \mathbb R^d$。在$i$时刻输入到编码器模块的是一个点$x_i$二维坐标$d$维的embedding，embedding是对所有输入点$x_i$共享参数的一个线性转换。解码器模块同样保存其潜在记忆状态$\{dec_i\}_{i=1}^{n}$，其中$dec_i\in \mathbb R^d$且在每一个时间步$i$使用指针机制产生下一个需要到访的城市概率分布。当下一个到访城市被选定后，它将会被传入到解码器作为其下一个输入。解码器的初始输入是一个$d$维的可训练的向量，在图中以$<g>$表示。
 
 注意力函数将每一个向量$q=dec_i \in \mathbb R^d$以及一系列的参考向量$ref=\{enc_1,\dots,enc_k\}$作为输入，并针对$k$个参考生成概率分布$A(ref,q)$。概率分布代表了模型在见到了序列$q$后指向的下一个参考点$r_i$的程度。
 
@@ -160,6 +160,55 @@ Critic网络映射输入序列$s$到一个基线函数$b_{\theta_v}$由如下几
 
 ## 附录
 
-### 指针机制
+### Pointing Mechanism
 
-有空补充
+这部分的计算是由两个注意力矩阵$W_{ref},W_q\in\mathbb R^{d\times d}$以及一个注意力矢量$v\in\mathbb R^{d}$表示的：
+$$
+u_i=\begin{cases}
+\begin{aligned}
+&v^{\top}\cdot\tanh (W_{ref}\cdot r_i + W_q \cdot q) & i\neq \pi(j)\ \forall j<i\\
+&-\infty& otherwise
+\end{aligned}
+\end{cases}
+$$
+
+$$
+A(ref,q;W_{ref},W_q,v)=softmax(u)
+$$
+
+指针网络在第$j$步时会依照下式输出下一个访问的点的概率分布：
+$$
+p(\pi(j)|\pi(<j),s)=A(enc_i,dec_j)
+$$
+将已经访问过的城市点的logits值设为$-\infty$，确保模型只会输出符合TSP要求的点。
+
+### Attending Mechanism
+
+Glimpse函数$G(ref,q)$和注意力函数$A$采取相同的输入，他的计算表征由$W_{ref}^{g},W_q^g \in \mathbb R^{d\times d}$和$v^g \in \mathbb R^{d}$完成。依照如下式子进行计算：
+$$
+p=A(ref,q;W_{req}^g,W_q^g,v^g)\\
+G(ref,q;W_{ref}^g,W_q^g,v^g)=\sum_{i=1}^{k}r_i p_i
+$$
+Glimpse函数是用注意力概率计算参考向量权重的线性组合，它同样可以在相同的参考集上运用多次：
+$$
+g_0=q\\
+g_l=G(ref,q_{l-1};W_{ref}^g,W_q^g,v^g)
+$$
+最终，$g_l$向量将会传递到注意力函数$A(ref,g_l;W_{ref},W_q,v)$以产生pointing机制。我们观测到对于相同的模型参数多次使用glimpse和只使用一次相比并不能有效加快训练并提高训练结果。
+
+### softmax temperature
+
+我们将注意力函数修改为如下式子：
+$$
+A(ref,q,T;W_{ref},W_q,v)=softmax(u/T)
+$$
+其中的$T$是*温度超参数*，并且在训练阶段设置为$T=1$。当$T>1$时，$A(ref,q)$的分布会变得平缓些，因此可以避免模型出现过度置信的情况。
+
+### logit clipping
+
+修改注意力机制为如下式子：
+$$
+A(ref,q;W_{ref},W_q,v)=softmax(C \tanh(u))
+$$
+其中，$C$是控制logits值得超参数并借此控制$A(ref,q)$的熵。
+
