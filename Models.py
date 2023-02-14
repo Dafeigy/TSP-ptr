@@ -22,15 +22,19 @@ class Critic():
 # Basic Modules
 class Encoder():
     def __init__(self,embedding_size, hidden_size) -> None:
-        self.RNN = nn.LSTM(embedding_size, hidden_size)
+        self.RNN = RNN_Block(embedding_size, hidden_size)
     
     def forward(self,x):
-        encoder_outputs, ht, ct = self.LSTM(x)
+        encoder_outputs, ht, ct = self.RNN(x)
         return encoder_outputs, ht, ct
 
 class Decoder():
-    def __init__(self) -> None:
-        pass
+    def __init__(self,embedding_size, hidden_size) -> None:
+        self.RNN = RNN_Block(embedding_size, hidden_size)
+
+    def forward(self,x):
+        decoder_outputs, ht, ct = self.RNN(x)
+        return decoder_outputs, ht, ct
 
 # Basic Units
 class Embedding_Block(nn.Module):
@@ -43,11 +47,13 @@ class Embedding_Block(nn.Module):
         self.embedding.data.uniform_(-(1. / math.sqrt(embedding_size)),1. / math.sqrt(embedding_size))
 
     def forward(self, input_seq):
-        '''
-        Input shape : [batch_size x 2 x seq_len]
-        '''
+        
+        # Input_seq shape : [batch_size x 2 x seq_len]
+        
         batch_size, _ ,seq_len = input_seq.shape
         input_seq = input_seq.unsqueeze(1)
+
+        # Input_seq shape : [batch_size x 1 x 2 x seq_len]
         print(input_seq.shape)
         embedding = self.embedding.repeat(batch_size, 1, 1) 
         embedding_output = \
