@@ -11,8 +11,21 @@ import math
 
 # Hierachy level
 class Actor():
-    def __init__(self) -> None:
-        pass
+    def __init__(self,embedding_size, hidden_size, use_tanh = False, C = 10) -> None:
+        self.embedding = Embedding_Block(2, embedding_size)
+        self.encoder = Encoder(embedding_size, hidden_size)
+        self.decoder = Decoder(embedding_size, hidden_size)
+        self.pointer = Attention_Block(hidden_size, use_tanh = use_tanh, C = C )
+        
+
+    def forward(self,input_seq):
+        batch_size, _, seq_len = input_seq.shape()
+        embedding_result = self.embedding(input_seq)
+        encoder_outputs, (ht,ct) = self.encoder(embedding_result)
+
+        prev_probs = []
+        prev_idxs = []
+        mask = torch.zeros(batch_size, seq_len).byte().cuda()
 
 class Critic():
     def __init__(self) -> None:
@@ -38,13 +51,12 @@ class Decoder():
 
 # Basic Units
 class Embedding_Block(nn.Module):
-    def __init__(self, input_size, embedding_size, use_cuda = False) -> None:
+    def __init__(self, input_size, embedding_size) -> None:
         super(Embedding_Block, self).__init__()
         self.embedding_size = embedding_size
-        self.use_cuda = use_cuda
         
         self.embedding = nn.Parameter(torch.FloatTensor(input_size,embedding_size))
-        self.embedding.data.uniform_(-(1. / math.sqrt(embedding_size)),1. / math.sqrt(embedding_size))
+        self.embedding.data.uniform_(-(1. / math.sqrt(embedding_size)), 1. / math.sqrt(embedding_size))
 
     def forward(self, input_seq):
         
@@ -76,15 +88,44 @@ class RNN_Block(nn.Module):
 
 
 class Attention_Block(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, hidden_size:int, use_tanh:bool = False, C=10) -> None:
         super(Attention_Block).__init__()
+        self.C = C
+        self.use_tanh = use_tanh
+        self.W_query = nn.Linear(hidden_size, hidden_size)
+        self.W_ref = nn.Conv1d(hidden_size, hidden_size, 1 ,1)
+        self.V = nn.Parameter(torch.FloatTensor(hidden_size).cuda())
+        self.V.data.uniform_(-(1. / math.sqrt(hidden_size)) , 1. / math.sqrt(hidden_size))
+
+    def forward(self,query, ref):
+        '''
+        Args:
+            query: [batch_size x hidden_size]
+            ref:    [batch_size x seq_len x hidden_size]
+        '''
+        batch_size, seq_len, _ = ref.shape()
+        ref = ref.permute(0,2,1)    # So it becomes [batch_size x hidden_size x seq_len]
+        expand_query = query.repeat(1,1,seq_len)   # [2 x batch_size, 2 x btachsize, (seq_len + 1) x hidden_size]
+        V = self.V.unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1) # [batch_size x 1 x hidden_size]
+        logits = torch.bmm(V, F.tanh(expand_query + ref)).squeeze(1)
+
+        if self.use_tanh:
+            logits = self.C * F.tanh(logits)
+        return ref, logits
+
+
+
 
 if __name__ == "__main__":
-    from datagenerator import TSPdataset
-    from torch.utils.data import DataLoader
-    Embedding = Embedding_Block(input_size=2, embedding_size=128)
-    data = TSPdataset(10,20)
-    dataloader = DataLoader(data, batch_size = 4, shuffle = True)
-    for batch_index, sample in enumerate(dataloader):
-        print(Embedding(Variable(sample)))
+    x = torch.FloatTensor(2, 3).uniform_(0, 1)
+    print(x)
+    x = x.repeat(1,2,3)
+    print(x)
+    # from datagenerator import TSPdataset
+    # from torch.utils.data import DataLoader
+    # Embedding = Embedding_Block(input_size=2, embedding_size=128)
+    # data = TSPdataset(10,20)
+    # dataloader = DataLoader(data, batch_size = 4, shuffle = True)
+    # for batch_index, sample in enumerate(dataloader):
+    #     print(Embedding(Variable(sample)))
 
