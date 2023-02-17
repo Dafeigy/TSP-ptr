@@ -3,20 +3,47 @@ import torch.nn as nn
 import torch.autograd as autograd
 import torch.optim as optim
 import torch.nn.functional as F
+import numpy as np
 
 from torch.autograd import Variable
 
 import math
 
 
-# Hierachy level
-class Actor():
-    def __init__(self,embedding_size, hidden_size, use_tanh = False, C = 10) -> None:
+# Ptr network
+class PTRNet(nn.Module):
+    def __init__(self,
+                embedding_size,
+                hidden_size,
+                seq_leq,
+                n_glimpse,
+                C,
+                use_tanh,
+    ):
+        super(PTRNet).__init__()
+        self.embedding_size = embedding_size
+        self.hidden_size = hidden_size
+        self.n_glimpse = n_glimpse
+        self.seq_len = seq_leq
+
+
         self.embedding = Embedding_Block(2, embedding_size)
         self.encoder = Encoder(embedding_size, hidden_size)
         self.decoder = Decoder(embedding_size, hidden_size)
         self.pointer = Attention_Block(hidden_size, use_tanh = use_tanh, C = C )
-        
+        self.glimpse = Attention_Block(hidden_size, use_tanh=False, C = C)
+
+        self.decoder_init = nn.Parameter(torch.FloatTensor(embedding_size))
+        self.decoder_init.data.uniform_(-(1. / math.sqrt(embedding_size)), 1. / math.sqrt(embedding_size))
+
+    def apply_mask(self, logits, mask ,idxs):
+        batch_size = logits.size(0)
+        clone_mask = mask.clone()
+
+        if idxs is not None:
+            clone_mask[[i for i in range(batch_size)], idxs.data] = 1
+            logits[clone_mask] = -np.inf
+        return logits, clone_mask
 
     def forward(self,input_seq):
         batch_size, _, seq_len = input_seq.shape()
@@ -26,6 +53,45 @@ class Actor():
         prev_probs = []
         prev_idxs = []
         mask = torch.zeros(batch_size, seq_len).byte().cuda()
+        idxs = None
+        decoder_input = self.decoder_init.unsqueeze(0).repeat(batch_size, 1)
+
+        for i in range(seq_len):
+            _, ht, ct = self.decoder(decoder_input.unsqueeze(1),(ht, ct))
+
+            query = ht.squeeze(0)
+            for j in range(self.n_glimpse):
+                ref, logits = self.glimpse(query, encoder_outputs)
+                logits, mask = self.apply_mask(logits, mask, idxs)
+                query = torch.bmm(ref, F.softmax(logits).unsqueeze(2)).squeeze(2)
+
+            _, logits = self.pointer(query, encoder_outputs)
+            logits, mask = self.apply(logits, mask, idxs)
+            probs = F.softmax(logits)
+
+            idxs = probs.multinomial().squezze(1)
+            for old_idxs in prev_idxs:
+                if old_idxs.eq(idxs).data.any():
+                    idxs = probs.multinomial().squeeze(1)
+                    break
+
+            decoder_input = embedding_result[[i for i in range(batch_size)], idxs.data, :]
+
+            prev_probs.append(probs)
+            prev_idxs.append(idxs)
+
+        return prev_probs, prev_idxs
+
+
+
+# Hierachy level
+
+
+        
+        
+
+    
+
 
 class Critic():
     def __init__(self) -> None:
