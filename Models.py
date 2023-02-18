@@ -87,10 +87,6 @@ class PTRNet(nn.Module):
 # Hierachy level
 
 
-        
-        
-
-    
 
 
 class Critic():
@@ -180,18 +176,13 @@ class Attention_Block(nn.Module):
         return ref, logits
 
 
-
-
 if __name__ == "__main__":
-    x = torch.FloatTensor(2, 3).uniform_(0, 1)
-    print(x)
-    x = x.repeat(1,2,3)
-    print(x)
-    # from datagenerator import TSPdataset
-    # from torch.utils.data import DataLoader
-    # Embedding = Embedding_Block(input_size=2, embedding_size=128)
-    # data = TSPdataset(10,20)
-    # dataloader = DataLoader(data, batch_size = 4, shuffle = True)
-    # for batch_index, sample in enumerate(dataloader):
-    #     print(Embedding(Variable(sample)))
+
+    from datagenerator import TSPdataset
+    from torch.utils.data import DataLoader
+    Embedding = Embedding_Block(input_size=2, embedding_size=128)
+    data = TSPdataset(10,20)
+    dataloader = DataLoader(data, batch_size = 4, shuffle = True)
+    for batch_index, sample in enumerate(dataloader):
+        print(Embedding(Variable(sample)))
 
