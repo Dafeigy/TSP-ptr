@@ -1,0 +1,7 @@
+embedding_size: 128
+hidden_size: 128
+C: 10
+use_tanh: True
+n_glimpse: 1
+beta: 0.9
+lr: 1e-3

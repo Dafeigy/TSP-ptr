@@ -1,14 +1,15 @@
 import Models
 import torch
+from tqdm import tqdm
 from torch.autograd import Variable
 import torch.optim as optim
 
 
-actor = Models.Actor()
+# actor = Models.Actor()
 
-beta = 0.2
+beta = 0.9
 
-class TrainModel():
+class TrainPipeline():
     def __init__(self, 
                  model,
                  trainset,
@@ -19,6 +20,7 @@ class TrainModel():
                  max_grad_norm,
                  threshold
                  ):
+        
         self.model = model
         self.trainset = trainset
         self.valset = valset
@@ -34,7 +36,7 @@ class TrainModel():
 
     def train_and_val(self, epoch_nums):
         critic_exp_mvg_avg = torch.zeros(1)
-        for epoch in range(epoch_nums):
+        for epoch in tqdm(range(epoch_nums)):
             # Train Mode
             for batch_id, data in enumerate(self.trainset):
                 self.model.train()
@@ -42,7 +44,7 @@ class TrainModel():
                 inputs = Variable(data).cuda()
 
                 R, probs, actions, actions_idxs =self.model(inputs)
-                if batch_id == 0:
+                if batch_id == 0: 
                     critic_exp_mvg_avg = R.mean()
                 else:
                     critic_exp_mvg_avg = (critic_exp_mvg_avg * beta) + ((1. - beta) * R.mean())
