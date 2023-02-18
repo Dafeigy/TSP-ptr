@@ -10,6 +10,16 @@ from torch.autograd import Variable
 import math
 
 
+def reward_func(route):
+    batch_size = route[0].size(0) 
+    n = len(route)
+    tour_len = Variable(torch.zeros([batch_size])).cuda()
+
+    for i in range(n):
+        tour_len += torch.norm(route[i] - route[(i + 1) % n], dim=1)
+
+    return tour_len
+
 # Ptr network
 class PTRNet(nn.Module):
     def __init__(self,
@@ -85,13 +95,47 @@ class PTRNet(nn.Module):
 
 
 # Hierachy level
+class Actor(nn.Module):
+    def __init__(self,
+                 embedding_size,
+                hidden_size,
+                seq_len,
+                n_glimpse,
+                C,
+                use_tanh,
+                reward):
+        super(Actor, self).__init__()
+        self.reward = reward
+        self.ptr = PTRNet(
+            embedding_size,
+                hidden_size,
+                seq_len,
+                n_glimpse,
+                C,
+                use_tanh,
+        )
+    
+    def forward(self, x):
+        batch_size, input_size, seq_len = x.shape()
+        probs, action_idxs = self.ptr(x)
 
+        actions = []
+        inputs = x.transpose(1,2)
 
+        for action_id in action_idxs:
+            actions.append(inputs[[x for x in range(batch_size)], action_id.data, :])
+        
+        action_probs = []
+        for prob, action_id in zip(probs, action_idxs):
+            action_probs.append([prob[[x for x in range(batch_size)]]])
 
+        R = self.reward(actions)
+        return R, action_probs, actions, action_idxs
 
-class Critic():
+class Critic(nn.Module):
     def __init__(self) -> None:
-        pass
+        super(Critic).__init__()
+        self.judge = reward_func
 
 
 # Basic Modules
@@ -120,7 +164,6 @@ class Embedding_Block(nn.Module):
         self.embedding.data.uniform_(-(1. / math.sqrt(embedding_size)), 1. / math.sqrt(embedding_size))
 
     def forward(self, input_seq):
-        
         # Input_seq shape : [batch_size x 2 x seq_len]
         
         batch_size, _ ,seq_len = input_seq.shape
