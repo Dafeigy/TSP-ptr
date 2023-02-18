@@ -15,7 +15,7 @@ class PTRNet(nn.Module):
     def __init__(self,
                 embedding_size,
                 hidden_size,
-                seq_leq,
+                seq_len,
                 n_glimpse,
                 C,
                 use_tanh,
@@ -24,7 +24,7 @@ class PTRNet(nn.Module):
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.n_glimpse = n_glimpse
-        self.seq_len = seq_leq
+        self.seq_len = seq_len
 
 
         self.embedding = Embedding_Block(2, embedding_size)
@@ -116,7 +116,6 @@ class Embedding_Block(nn.Module):
     def __init__(self, input_size, embedding_size) -> None:
         super(Embedding_Block, self).__init__()
         self.embedding_size = embedding_size
-        
         self.embedding = nn.Parameter(torch.FloatTensor(input_size,embedding_size))
         self.embedding.data.uniform_(-(1. / math.sqrt(embedding_size)), 1. / math.sqrt(embedding_size))
 
