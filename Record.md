@@ -210,5 +210,5 @@ $$
 $$
 A(ref,q;W_{ref},W_q,v)=softmax(C \tanh(u))
 $$
-其中，$C$是控制logits值得超参数并借此控制$A(ref,q)$的熵。没了
+其中，$C$是控制logits值得超参数并借此控制$A(ref,q)$的熵。真没了
 
