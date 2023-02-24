@@ -110,7 +110,7 @@ class TSPModel(nn.Module):
 
 if __name__ == "__main__":
     data = TSPdataset(10,100)
-    loader = DataLoader(data, batch_size = 4, shuffle=True)
+    loader = DataLoader(data, batch_size = 8, shuffle=True)
     for idx, sample in enumerate(loader):
         #print(f'sample:\n{sample}')
         break
