@@ -113,6 +113,9 @@ if __name__ == "__main__":
     loader = DataLoader(data, batch_size = 8, shuffle=True)
     for idx, sample in enumerate(loader):
         #print(f'sample:\n{sample}')
+        """
+        我恋爱了^_^
+        """
         break
     inputs = sample.cuda()
     model = TSPModel().cuda()
