@@ -178,8 +178,6 @@ class Embedding_Block(nn.Module):
             embedding_output.append(torch.bmm(input_seq[:, :, :, i].float(), embedding))
         return torch.cat(embedding_output,1)
 
-
-
 class RNN_Block(nn.Module):
     def __init__(self, embedding_size, hidden_size, num_layer = 1) -> None:
         super(RNN_Block).__init__()
@@ -188,8 +186,6 @@ class RNN_Block(nn.Module):
     def forward(self,x):
         x, ht, ct= self.LSTM(x)
         return x, ht,ct
-
-
 
 class Attention_Block(nn.Module):
     def __init__(self, hidden_size:int, use_tanh:bool = False, C=10) -> None:
